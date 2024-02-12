@@ -1,28 +1,77 @@
-﻿using Hideous.Platform;
+﻿using Hideous.Communication;
+using Hideous.Platform;
 
 namespace Hideous
 {
     public abstract class Device : IDisposable
     {
-        private UsbProvider _usbProvider;
+        private Dictionary<byte, DeviceInputReport> _inputs = new();
+        private Dictionary<byte, DeviceOutputReport> _outputs = new();
+        private Dictionary<byte, DeviceFeatureReport> _features = new();
+
+        internal UsbProvider UsbProvider { get; }
+
+        protected IReadOnlyDictionary<byte, DeviceInputReport> Inputs => _inputs;
+        protected IReadOnlyDictionary<byte, DeviceOutputReport> Outputs => _outputs;
+        protected IReadOnlyDictionary<byte, DeviceFeatureReport> Features => _features;
 
         protected Device(DeviceCharacteristics characteristics)
         {
-            if (OperatingSystem.IsLinux())
+            UsbProvider = new GenericUsbProvider(characteristics);
+
+            var reports = UsbProvider.EnumerateDeviceReports();
+
+            foreach (var report in reports)
             {
-                _usbProvider = new LinuxUsbProvider(characteristics);
-            }
-            else if (OperatingSystem.IsWindows())
-            {
-                _usbProvider = new WindowsUsbProvider(characteristics);
-            }
-            else
-            {
-                throw new PlatformNotSupportedException("Your platform is not supported.");
+                switch (report)
+                {
+                    case DeviceInputReport inputReport:
+                    {
+                        _inputs.Add(report.Id, inputReport);
+                        break;
+                    }
+
+                    case DeviceOutputReport outputReport:
+                    {
+                        _outputs.Add(report.Id, outputReport);
+                        break;
+                    }
+
+                    case DeviceFeatureReport featureReport:
+                    {
+                        _features.Add(report.Id, featureReport);
+                        break;
+                    }
+                }
             }
         }
 
-        public T Feature<T>(params byte[] command) where T : FeaturePacket
+        protected T Feature<T>(params byte[] command) where T : FeaturePacket
+        {
+            try
+            {
+                return (T)Activator.CreateInstance(typeof(T), command)!;
+            }
+            catch
+            {
+                return (T)Activator.CreateInstance(typeof(T))!;
+            }
+        }
+        
+        protected T Input<T>(params byte[] command) where T : InputPacket
+        {
+            try
+            {
+                return (T)Activator.CreateInstance(typeof(T), command)!;
+            }
+            catch
+            {
+                return (T)Activator.CreateInstance(typeof(T))!;
+            }
+        }
+        
+                
+        protected T Output<T>(params byte[] command) where T : InputPacket
         {
             try
             {
@@ -34,7 +83,7 @@ namespace Hideous
             }
         }
 
-        public T Packet<T>(params byte[] command) where T : Packet
+        protected T Packet<T>(params byte[] command) where T : Packet
         {
             try
             {
@@ -45,17 +94,8 @@ namespace Hideous
                 return (T)Activator.CreateInstance(typeof(T))!;
             }
         }
-
-        public void Set(FeaturePacket packet)
-            => _usbProvider.Set(packet.Data);
-
-        public byte[] Get(FeaturePacket packet)
-            => _usbProvider.Get(packet.Data);
-
-        public void Write(Packet packet)
-            => _usbProvider.Write(packet.Data);
-
+        
         public void Dispose()
-            => _usbProvider.Dispose();
+            => UsbProvider.Dispose();
     }
 }

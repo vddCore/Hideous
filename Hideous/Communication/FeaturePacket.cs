@@ -1,4 +1,4 @@
-﻿namespace Hideous
+﻿namespace Hideous.Communication
 {
     public abstract class FeaturePacket : Packet<FeaturePacket>
     {

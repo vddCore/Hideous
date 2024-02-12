@@ -11,9 +11,12 @@ namespace Hideous.Platform
             ProductID = productId;
         }
 
+        internal abstract List<DeviceReport> EnumerateDeviceReports();
+        
         public abstract void Set(byte[] data);
         public abstract byte[] Get(byte[] data);
         public abstract void Write(byte[] data);
+        public abstract byte[] Read(byte[] data);
         
         public abstract void Dispose();
     }
