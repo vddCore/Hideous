@@ -45,55 +45,6 @@ namespace Hideous
                 }
             }
         }
-
-        protected T Feature<T>(params byte[] command) where T : FeaturePacket
-        {
-            try
-            {
-                return (T)Activator.CreateInstance(typeof(T), command)!;
-            }
-            catch
-            {
-                return (T)Activator.CreateInstance(typeof(T))!;
-            }
-        }
-        
-        protected T Input<T>(params byte[] command) where T : InputPacket
-        {
-            try
-            {
-                return (T)Activator.CreateInstance(typeof(T), command)!;
-            }
-            catch
-            {
-                return (T)Activator.CreateInstance(typeof(T))!;
-            }
-        }
-        
-                
-        protected T Output<T>(params byte[] command) where T : InputPacket
-        {
-            try
-            {
-                return (T)Activator.CreateInstance(typeof(T), command)!;
-            }
-            catch
-            {
-                return (T)Activator.CreateInstance(typeof(T))!;
-            }
-        }
-
-        protected T Packet<T>(params byte[] command) where T : Packet
-        {
-            try
-            {
-                return (T)Activator.CreateInstance(typeof(T), command)!;
-            }
-            catch
-            {
-                return (T)Activator.CreateInstance(typeof(T))!;
-            }
-        }
         
         public void Dispose()
             => UsbProvider.Dispose();

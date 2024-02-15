@@ -1,3 +1,5 @@
+using Hideous.Communication;
+
 namespace Hideous.Platform
 {
     internal abstract class UsbProvider : IDisposable

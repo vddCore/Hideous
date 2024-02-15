@@ -1,28 +1,28 @@
 ﻿namespace Hideous.Communication
 {
-    public abstract class Packet
+    public abstract class Request
     {
-        public byte[] Data { get; protected set; } = new byte[0];
+        public byte ReportId => Data[0];
+        public byte[] Data { get; protected set; } = new byte[1];
     }
 
-    public abstract class Packet<T> : Packet
-        where T : Packet
+    public abstract class Request<T> : Request
+        where T : Request
     {
-        private int _currentDataIndex;
+        private int _currentDataIndex = 1;
 
-        internal Packet(int initialDataIndex, int packetLength, params byte[] data)
+        protected Request(byte reportId, int length, params byte[] data)
         {
-            if (packetLength < 1)
+            if (length < 1)
             {
                 throw new ArgumentOutOfRangeException(
-                    nameof(packetLength),
-                    "Packet length must be at least 1."
+                    nameof(length),
+                    "Request length must be at least 1."
                 );
             }
 
-            _currentDataIndex = initialDataIndex;
-
-            Data = new byte[packetLength];
+            Data = new byte[length];
+            Data[0] = reportId;
 
             if (data.Length > 0)
             {
@@ -30,7 +30,7 @@
                 {
                     throw new ArgumentOutOfRangeException(
                         nameof(data),
-                        "Your packet length does not allow for initial data to be appended."
+                        "Your request length does not allow for initial data to be appended."
                     );
                 }
 

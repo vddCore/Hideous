@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Hideous.Communication;
 using HidSharp;
 using HidSharp.Reports;
 
@@ -62,19 +63,19 @@ namespace Hideous.Platform
                 {
                     case ReportType.Input:
                     {
-                        reports.Add(new DeviceInputReport(this, reportId, usageValues));
+                        reports.Add(new DeviceInputReport(this, reportId, report.Length, usageValues));
                         break;
                     }
 
                     case ReportType.Output:
                     {
-                        reports.Add(new DeviceOutputReport(this, reportId, usageValues));
+                        reports.Add(new DeviceOutputReport(this, reportId, report.Length, usageValues));
                         break;
                     }
 
                     case ReportType.Feature:
                     {
-                        reports.Add(new DeviceFeatureReport(this, reportId, usageValues));
+                        reports.Add(new DeviceFeatureReport(this, reportId, report.Length, usageValues));
                         break;
                     }
                 }

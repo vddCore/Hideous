@@ -1,6 +1,6 @@
 using Hideous.Platform;
 
-namespace Hideous
+namespace Hideous.Communication
 {
     public abstract class DeviceReport
     {
@@ -9,12 +9,15 @@ namespace Hideous
         internal UsbProvider UsbProvider { get; }
         
         public byte Id { get; }
+        public int Length { get; }
+        
         public IReadOnlyList<(ushort UsagePage, ushort UsageId)> Usages => _usages;
 
-        internal DeviceReport(UsbProvider usbProvider, byte id, IEnumerable<uint> usageValues)
+        internal DeviceReport(UsbProvider usbProvider, byte id, int length, IEnumerable<uint> usageValues)
         {
             UsbProvider = usbProvider;
             Id = id;
+            Length = length;
 
             foreach (var usageValue in usageValues)
             {
