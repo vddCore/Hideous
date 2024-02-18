@@ -30,7 +30,7 @@ namespace Hideous
                 if (devices == null)
                 {
                     throw new HidException(
-                        $"No devices identified by {vendorId:X4}:{productId:X4} were found on your machine."
+                        $"No devices identified by {VendorID:X4}:{ProductID:X4} were found on your machine."
                     );
                 }
                 

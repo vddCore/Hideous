@@ -6,12 +6,10 @@ namespace Hideous
     {
         internal HidReportDescriptor(byte[] rawDescriptor)
         {
-            var reportDescriptorParser = new ReportDescriptorParser(rawDescriptor);
-        }
+            var descriptorReader = new DescriptorReader(rawDescriptor);
+            var tlc = descriptorReader.ReadRawDescriptor();
 
-        private void Parse(BinaryReader br)
-        {
-
+            Console.WriteLine();
         }
     }
 }
