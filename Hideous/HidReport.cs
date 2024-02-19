@@ -13,7 +13,7 @@ namespace Hideous
         public int BitsPerField { get; }
         public int FieldCount { get; }
 
-        public int DataLength => BitsPerField * FieldCount / 8;
+        public int DataLength => Math.Max(1, (BitsPerField / 8) * FieldCount);
         
         public ushort UsagePage { get; }
         public IReadOnlyList<ushort> UsageIds => _usageIds;
