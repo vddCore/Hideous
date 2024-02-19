@@ -1,14 +1,7 @@
 ﻿using Hideous;
 
-var deviceFamily = new HidDeviceCollection(0x331A, 0x5018);
-
-foreach (var device in deviceFamily.Devices)
+var deviceFamily = new HidDeviceCollection(0, 0);
+foreach (var dev in deviceFamily)
 {
-    Console.WriteLine(device.Properties);
-    device.Connect();
-    foreach (var report in device.Descriptor.Reports)
-    {
-        Console.WriteLine(report.ToString());
-    }
-    device.Disconnect();
+    Console.WriteLine(dev.Properties);
 }

@@ -8,19 +8,19 @@ namespace Hideous
         private List<ushort> _usageIds = new();
 
         public bool UsesId { get; }
-        public byte ReportId { get; }
+        public byte Id { get; }
 
         public int BitsPerField { get; }
         public int FieldCount { get; }
 
-        public int DataLength => (BitsPerField / 8) * FieldCount;
+        public int DataLength => BitsPerField * FieldCount / 8;
         
         public ushort UsagePage { get; }
         public IReadOnlyList<ushort> UsageIds => _usageIds;
 
-        internal HidReport(byte reportId, int bitsPerField, int fieldCount, ushort usagePage, ushort usageId)
+        internal HidReport(byte id, int bitsPerField, int fieldCount, ushort usagePage, ushort usageId)
         {
-            ReportId = reportId;
+            Id = id;
             UsesId = true;
 
             BitsPerField = bitsPerField;
@@ -33,7 +33,7 @@ namespace Hideous
 
         internal HidReport(int bitsPerField, int fieldCount, ushort usagePage, ushort usageId)
         {
-            ReportId = 0;
+            Id = 0;
             UsesId = false;
 
             BitsPerField = bitsPerField;
@@ -60,7 +60,7 @@ namespace Hideous
 
             if (UsesId)
             {
-                sb.AppendLine($"    Report ID: 0x{ReportId:X2} ({ReportId})");
+                sb.AppendLine($"    Report ID: 0x{Id:X2} ({Id})");
             }
 
             sb.AppendLine($"    Bits per data field: {BitsPerField}");

@@ -10,15 +10,15 @@ namespace Hideous
 
         private readonly List<HidReport> _allReports = new();
         
-        private readonly Dictionary<byte, HidReport> _idInputReports = new();
-        private readonly Dictionary<byte, HidReport> _idOutputReports = new();
-        private readonly Dictionary<byte, HidReport> _idFeatureReports = new();
+        private readonly Dictionary<byte, HidInputReport> _idInputReports = new();
+        private readonly Dictionary<byte, HidOutputReport> _idOutputReports = new();
+        private readonly Dictionary<byte, HidFeatureReport> _idFeatureReports = new();
 
         public IReadOnlyList<HidReport> Reports => _allReports;
 
-        public IReadOnlyDictionary<byte, HidReport> InputReports => _idInputReports;
-        public IReadOnlyDictionary<byte, HidReport> OutputReports => _idOutputReports;
-        public IReadOnlyDictionary<byte, HidReport> FeatureReports => _idFeatureReports;
+        public IReadOnlyDictionary<byte, HidInputReport> InputReports => _idInputReports;
+        public IReadOnlyDictionary<byte, HidOutputReport> OutputReports => _idOutputReports;
+        public IReadOnlyDictionary<byte, HidFeatureReport> FeatureReports => _idFeatureReports;
 
         internal HidReportDescriptor(HidDevice device, byte[] rawDescriptor)
         {

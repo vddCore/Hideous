@@ -6,6 +6,7 @@ namespace Hideous
     {
         private HidReportDescriptor? _descriptor;
 
+        private bool _isReadBlocking;
         private bool _isDisposed;
         private IntPtr _connectionHandle;
 
@@ -17,6 +18,28 @@ namespace Hideous
         );
 
         public bool IsConnectionOpen => _connectionHandle != IntPtr.Zero;
+
+        public bool IsReadBlocking
+        {
+            get
+            {
+                EnsureNotDisposed();
+
+                return _isReadBlocking;
+            }
+
+            set
+            {
+                EnsureNotDisposed();
+
+                _isReadBlocking = value;
+
+                if (IsConnectionOpen)
+                {
+                    hid_set_nonblocking(_connectionHandle, !_isReadBlocking);
+                }
+            }
+        }
 
         internal HidDevice(HidDeviceCollection collection, hid_device_info info)
         {
@@ -42,6 +65,8 @@ namespace Hideous
                 this,
                 ReadRawReportDescriptor()
             );
+
+            hid_set_nonblocking(_connectionHandle, !_isReadBlocking);
         }
 
         public void Disconnect()
@@ -62,12 +87,162 @@ namespace Hideous
             if (result < 0)
             {
                 throw new HidException(
-                    $"Unable to retrieve device's raw report descriptor: {hid_error(_connectionHandle)}"
+                    $"Unable to retrieve the device's raw report descriptor: {hid_error(_connectionHandle)}"
                 );
             }
 
             Array.Resize(ref descriptor, result);
             return descriptor;
+        }
+
+        public int WriteOutputReport(byte[] rawReport)
+        {
+            EnsureNotDisposed();
+            EnsureConnected();
+
+            unsafe
+            {
+                fixed (byte* ptr = rawReport)
+                {
+                    var result = hid_write(
+                        _connectionHandle,
+                        ptr,
+                        rawReport.Length
+                    );
+
+                    if (result < 0)
+                    {
+                        throw new HidException(
+                            $"Error while writing an output report to the device: {hid_error(_connectionHandle)}"
+                        );
+                    }
+
+                    return result;
+                }
+            }
+        }
+
+        public int ReadInputReport(byte[] rawReport, bool blocking = false)
+        {
+            EnsureNotDisposed();
+            EnsureConnected();
+
+            unsafe
+            {
+                fixed (byte* ptr = rawReport)
+                {
+                    int result;
+
+                    if (blocking)
+                    {
+                        result = hid_read_timeout(
+                            _connectionHandle,
+                            ptr,
+                            rawReport.Length,
+                            -1 /* hid_read_timeout will issue a blocking wait if this is -1 */
+                        );
+                    }
+                    else
+                    {
+                        result = hid_read(
+                            _connectionHandle,
+                            ptr,
+                            rawReport.Length
+                        );
+                    }
+
+                    if (result < 0)
+                    {
+                        throw new HidException(
+                            $"Error while reading an input report from the device: {hid_error(_connectionHandle)}"
+                        );
+                    }
+
+                    return result;
+                }
+            }
+        }
+
+        public int ReadInputReport(byte[] rawReport, TimeSpan timeout)
+        {
+            EnsureNotDisposed();
+            EnsureConnected();
+
+            unsafe
+            {
+                fixed (byte* ptr = rawReport)
+                {
+                    var result = hid_read_timeout(
+                        _connectionHandle,
+                        ptr,
+                        rawReport.Length,
+                        (int)timeout.TotalMilliseconds
+                    );
+
+                    if (result < 0)
+                    {
+                        throw new HidException(
+                            $"Error while reading an input report from the device: {hid_error(_connectionHandle)}"
+                        );
+                    }
+
+                    return result;
+                }
+            }
+        }
+
+        public int SetFeatureReport(byte[] rawReport)
+        {
+            EnsureNotDisposed();
+            EnsureConnected();
+
+            unsafe
+            {
+                fixed (byte* ptr = rawReport)
+                {
+                    var result = hid_send_feature_report(
+                        _connectionHandle,
+                        ptr,
+                        rawReport.Length
+                    );
+                    
+                    if (result < 0)
+                    {
+                        throw new HidException(
+                            $"Error while sending a feature report to the device: {hid_error(_connectionHandle)}"
+                        );
+                    }
+
+                    return result;
+                }
+            }
+        }
+        
+        public int GetFeatureReport(byte[] rawReport)
+        {
+            EnsureNotDisposed();
+            EnsureConnected();
+
+            unsafe
+            {
+                fixed (byte* ptr = rawReport)
+                {
+                    var result = hid_get_feature_report(
+                        _connectionHandle,
+                        ptr,
+                        rawReport.Length
+                    );
+                    
+                    if (result < 0)
+                    {
+                        throw new HidException(
+                            $"Error while retrieving a feature report from the device: {hid_error(_connectionHandle)}"
+                        );
+                    }
+
+                    return result;
+                }
+            }
         }
 
         internal void Dispose()

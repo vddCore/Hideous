@@ -98,21 +98,21 @@ namespace Hideous.Native
         public static extern unsafe int hid_send_feature_report(
             IntPtr dev,
             byte* data,
-            uint length
+            IntPtr length
         );
 
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         public static extern unsafe int hid_get_feature_report(
             IntPtr dev,
             byte* data,
-            uint length
+            IntPtr length
         );
 
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         public static extern unsafe int hid_get_input_report(
             IntPtr dev,
             byte* data,
-            uint length
+            int length
         );
 
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]

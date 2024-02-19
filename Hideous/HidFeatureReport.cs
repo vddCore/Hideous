@@ -12,10 +12,45 @@ namespace Hideous
             _device = device;
         }
         
-        internal HidFeatureReport(HidDevice device, byte reportId, int bitsPerField, int fieldCount, ushort usagePage, ushort usageId) 
-            : base(reportId, bitsPerField, fieldCount, usagePage, usageId)
+        internal HidFeatureReport(HidDevice device, byte id, int bitsPerField, int fieldCount, ushort usagePage, ushort usageId) 
+            : base(id, bitsPerField, fieldCount, usagePage, usageId)
         {
             _device = device;
+        }
+
+        public int Set(byte[] data)
+        {
+            Array.Resize(ref data, DataLength + 1);
+
+            for (var i = data.Length - 1; i >= 1; i--)
+            {
+                data[i] = data[i - 1];
+            }
+
+            data[0] = Id;
+            return _device.SetFeatureReport(data) - 1;
+        }
+        
+        public byte[] Get(byte[] data)
+        {
+            Array.Resize(ref data, DataLength + 1);
+
+            for (var i = data.Length - 1; i >= 1; i++)
+            {
+                data[i] = data[i - 1];
+            }
+
+            data[0] = Id;
+
+            var count = _device.GetFeatureReport(data);
+
+            var ret = new byte[count - 1];
+            if (count > 0)
+            {
+                Array.Copy(data, 1, ret, 0, count - 1);
+            }
+
+            return ret; 
         }
 
         public override string ToString()
