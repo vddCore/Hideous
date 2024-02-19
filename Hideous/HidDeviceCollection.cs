@@ -38,7 +38,17 @@ namespace Hideous
 
                 while (currentDevice != null)
                 {
-                    _devices.Add(new HidDevice(this, *currentDevice));
+                    var device = new HidDevice(this, *currentDevice);
+
+                    if (!_devices.Exists(x => x.Properties.DevicePath == device.Properties.DevicePath))
+                    {
+                        _devices.Add(device);
+                    }
+                    else
+                    {
+                        device.Dispose();
+                    }
+
                     currentDevice = currentDevice->next;
                 }
 

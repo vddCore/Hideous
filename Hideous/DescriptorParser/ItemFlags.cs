@@ -1,7 +1,7 @@
 namespace Hideous.DescriptorParser
 {
     // HID Specification v1.11 6.2.2.4, Parts table
-    public record ItemFlags(int Flags)
+    internal record ItemFlags(int Flags)
     {
         public bool Constant => (Flags & 0b00000000_00000001) != 0;
         public bool Data => !Constant;

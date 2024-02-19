@@ -6,12 +6,12 @@ namespace Hideous.DescriptorParser
         private readonly ItemType _type;
         private readonly byte _tag;
         private readonly byte _size;
-        private readonly int? _value;
+        private readonly int _value;
         private readonly List<Item> _items = new();
         
         public ItemType Type => _type;
         public byte Size => _size;
-        public int? Value => _value;
+        public int Value => _value;
         public IReadOnlyList<Item> Items => _items;
         
         public Item? this[GlobalTag tag] 

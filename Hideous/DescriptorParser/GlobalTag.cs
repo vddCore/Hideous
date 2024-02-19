@@ -11,7 +11,7 @@ namespace Hideous.DescriptorParser
         UnitExponent    = 0b0101,
         Unit            = 0b0110,
         ReportSize      = 0b0111,
-        ReportID        = 0b1000,
+        ReportId        = 0b1000,
         ReportCount     = 0b1001,
         Push            = 0b1010,
         Pop             = 0b1011

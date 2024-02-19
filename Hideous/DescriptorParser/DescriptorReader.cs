@@ -9,8 +9,11 @@ namespace Hideous.DescriptorParser
         private List<CollectionItem> _topLevelCollections = new();
         private Stack<CollectionItem> _collectionDefinitionStack = new();
 
-        private Dictionary<GlobalTag, Item> _globals = new();
+        private Stack<Dictionary<GlobalTag, Item>> _globalsStack = new();
+
         private List<Item> _locals = new();
+
+        private Dictionary<GlobalTag, Item> Globals => _globalsStack.Peek();
 
         private CollectionItem? CurrentCollection
         {
@@ -26,14 +29,16 @@ namespace Hideous.DescriptorParser
         public DescriptorReader(byte[] data)
         {
             _data = data;
+            _globalsStack.Push(new Dictionary<GlobalTag, Item>());
         }
 
         public List<CollectionItem> ReadRawDescriptor()
         {
             _topLevelCollections.Clear();
 
+#if DEBUG
             DumpDescriptor(_data);
-
+#endif
             using (var ms = new MemoryStream(_data))
             using (var br = new BinaryReader(ms))
             {
@@ -55,6 +60,8 @@ namespace Hideous.DescriptorParser
                 Console.Write(descriptor[i].ToString("X2"));
                 Console.Write(" ");
             }
+
+            Console.WriteLine();
         }
 
         private void Parse(BinaryReader br)
@@ -149,7 +156,7 @@ namespace Hideous.DescriptorParser
                     AddItemWithCurrentState(new OutputItem(size, value));
                     break;
                 }
-                
+
                 case MainTag.Feature:
                 {
                     if (CurrentCollection == null)
@@ -164,7 +171,27 @@ namespace Hideous.DescriptorParser
         private void HandleGlobalItem(BinaryReader br, byte size, GlobalTag tag)
         {
             var value = FetchItemValue(br, size);
-            _globals[tag] = new Item(tag, size, value);
+
+            switch (tag)
+            {
+                case GlobalTag.Push:
+                {
+                    DuplicateGlobals();
+                    break;
+                }
+
+                case GlobalTag.Pop:
+                {
+                    _globalsStack.Pop();
+                    break;
+                }
+
+                default:
+                {
+                    Globals[tag] = new Item(tag, size, value);
+                    break;
+                }
+            }
         }
 
         private void HandleLocalItem(BinaryReader br, byte size, LocalTag tag)
@@ -190,15 +217,15 @@ namespace Hideous.DescriptorParser
         {
             var collection = new CollectionItem(type, CurrentCollection);
 
-            foreach (var (_, item) in _globals)
+            foreach (var (_, item) in Globals)
                 collection.AddItem(item);
-            
-            foreach (var local in _locals) 
+
+            foreach (var local in _locals)
                 collection.AddItem(local);
 
             if (CurrentCollection != null)
                 CurrentCollection.AddItem(collection);
-            
+
             _collectionDefinitionStack.Push(collection);
             _locals.Clear();
         }
@@ -207,20 +234,30 @@ namespace Hideous.DescriptorParser
         {
             var collection = _collectionDefinitionStack.Pop();
 
-            if (CurrentCollection == null) 
+            if (CurrentCollection == null)
                 _topLevelCollections.Add(collection);
         }
 
         private void AddItemWithCurrentState(Item item)
         {
-            foreach (var (_, global) in _globals)
+            foreach (var (_, global) in Globals)
                 item.AddItem(global);
-                    
-            foreach (var local in _locals) 
+
+            foreach (var local in _locals)
                 item.AddItem(local);
-                    
+
             CurrentCollection!.AddItem(item);
             _locals.Clear();
+        }
+
+        private void DuplicateGlobals()
+        {
+            var dictionary = new Dictionary<GlobalTag, Item>();
+
+            foreach (var (tag, item) in Globals)
+                dictionary.Add(tag, item);
+
+            _globalsStack.Push(dictionary);
         }
     }
 }

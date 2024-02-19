@@ -4,13 +4,18 @@ namespace Hideous
 {
     public sealed class HidDevice
     {
+        private HidReportDescriptor? _descriptor;
+
         private bool _isDisposed;
         private IntPtr _connectionHandle;
-        
+
         public HidDeviceCollection Collection { get; private set; }
         public HidDeviceProperties Properties { get; private set; }
-        public HidReportDescriptor Descriptor { get; private set; } = null!;
-        
+
+        public HidReportDescriptor Descriptor => _descriptor ?? throw new InvalidOperationException(
+            "No descriptor for this device is present yet - it will be retrieved when a connection is established to the device."
+        );
+
         public bool IsConnectionOpen => _connectionHandle != IntPtr.Zero;
 
         internal HidDevice(HidDeviceCollection collection, hid_device_info info)
@@ -23,7 +28,7 @@ namespace Hideous
         {
             EnsureNotDisposed("Cannot connect: device has been disposed.");
             EnsureNotConnected("Cannot connect: connection is already open.");
-            
+
             _connectionHandle = hid_open_path(Properties.DevicePath);
 
             if (_connectionHandle == IntPtr.Zero)
@@ -33,14 +38,17 @@ namespace Hideous
                 );
             }
 
-            Descriptor = new HidReportDescriptor(ReadRawReportDescriptor());
+            _descriptor = new HidReportDescriptor(
+                this,
+                ReadRawReportDescriptor()
+            );
         }
 
         public void Disconnect()
         {
             EnsureNotDisposed("Cannot disconnect: device has been disposed.");
             EnsureConnected("Cannot disconnect: no connection is open.");
-            
+
             hid_close(_connectionHandle);
             _connectionHandle = IntPtr.Zero;
         }
@@ -68,10 +76,10 @@ namespace Hideous
                 "Attempt to dispose a HID device more than once. " +
                 "This is an internal error - please report."
             );
-            
+
             Collection = null!;
             Properties = null!;
-            Descriptor = null!;
+            _descriptor = null!;
 
             if (_connectionHandle != IntPtr.Zero)
             {
@@ -86,7 +94,7 @@ namespace Hideous
             if (_isDisposed)
             {
                 throw new InvalidOperationException(
-                    customMsg 
+                    customMsg
                     ?? "This HID device has already been disposed."
                 );
             }
@@ -97,12 +105,12 @@ namespace Hideous
             if (_connectionHandle == IntPtr.Zero)
             {
                 throw new InvalidOperationException(
-                    customMsg 
+                    customMsg
                     ?? "This operation requires a connection to the device to be open."
                 );
             }
         }
-        
+
         private void EnsureNotConnected(string? customMsg = null)
         {
             if (_connectionHandle != IntPtr.Zero)
