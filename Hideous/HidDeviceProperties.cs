@@ -43,17 +43,14 @@ namespace Hideous
                 
                 while (true)
                 {
-                    if (*(addr + 0) == 0 && *(addr + 1) == 0 && *(addr + 2) == 0 && *(addr + 3) == 0)
+                    if (*(addr + 0) == 0 && *(addr + 1) == 0)
                     {
                         break;
                     }
                     
                     bytes.Add(*(addr + 0));
                     bytes.Add(*(addr + 1));
-                    bytes.Add(*(addr + 2));
-                    bytes.Add(*(addr + 3));
-                    
-                    addr += 4;
+                    addr += 2;
                 }
             }
 
