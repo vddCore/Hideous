@@ -164,7 +164,7 @@ namespace Hideous
             {
                 UsageId = item[LocalTag.Usage] ?? UsageId;
                 UsagePage = item[GlobalTag.UsagePage] ?? UsagePage;
-                ReportId = item[GlobalTag.ReportId];
+                ReportId = item[GlobalTag.ReportId]!;
                 ReportSize = item[GlobalTag.ReportSize] ?? ReportSize;
                 ReportCount = item[GlobalTag.ReportCount] ?? ReportCount;
             }
