@@ -1,13 +1,12 @@
-namespace Hideous.DescriptorParser.Items
-{
-    internal sealed class FeatureItem : Item
-    {
-        public ItemFlags Flags { get; }
+namespace Hideous.DescriptorParser.Items;
 
-        public FeatureItem(byte size, int value) 
-            : base(MainTag.Feature, size, value)
-        {
-            Flags = new ItemFlags(value);
-        }
+internal sealed class FeatureItem : Item
+{
+    public ItemFlags Flags { get; }
+
+    public FeatureItem(byte size, int value) 
+        : base(MainTag.Feature, size, value)
+    {
+        Flags = new ItemFlags(value);
     }
 }

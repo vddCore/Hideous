@@ -1,9 +1,8 @@
-namespace Hideous
+namespace Hideous;
+
+public enum HidReportType
 {
-    public enum HidReportType
-    {
-        Input,
-        Output,
-        Feature
-    }
+    Input,
+    Output,
+    Feature
 }

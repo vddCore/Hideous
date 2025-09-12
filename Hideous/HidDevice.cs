@@ -1,300 +1,299 @@
+namespace Hideous;
+
 using static Hideous.Native.HidApi;
 
-namespace Hideous
+public sealed class HidDevice
 {
-    public sealed class HidDevice
+    private HidReportDescriptor? _descriptor;
+
+    private bool _isReadBlocking;
+    private bool _isDisposed;
+    private IntPtr _connectionHandle;
+
+    public HidDeviceCollection Collection { get; private set; }
+    public HidDeviceProperties Properties { get; private set; }
+
+    public HidReportDescriptor Descriptor => _descriptor ?? throw new InvalidOperationException(
+        "No descriptor for this device is present yet - it will be retrieved when a connection is established to the device."
+    );
+
+    public bool IsConnectionOpen => _connectionHandle != IntPtr.Zero;
+
+    public bool IsReadBlocking
     {
-        private HidReportDescriptor? _descriptor;
+        get
+        {
+            EnsureNotDisposed();
 
-        private bool _isReadBlocking;
-        private bool _isDisposed;
-        private IntPtr _connectionHandle;
+            return _isReadBlocking;
+        }
 
-        public HidDeviceCollection Collection { get; private set; }
-        public HidDeviceProperties Properties { get; private set; }
+        set
+        {
+            EnsureNotDisposed();
 
-        public HidReportDescriptor Descriptor => _descriptor ?? throw new InvalidOperationException(
-            "No descriptor for this device is present yet - it will be retrieved when a connection is established to the device."
+            _isReadBlocking = value;
+
+            if (IsConnectionOpen)
+            {
+                hid_set_nonblocking(_connectionHandle, !_isReadBlocking);
+            }
+        }
+    }
+
+    internal HidDevice(HidDeviceCollection collection, hid_device_info info)
+    {
+        Collection = collection;
+        Properties = new HidDeviceProperties(info);
+    }
+
+    public void Connect()
+    {
+        EnsureNotDisposed("Cannot connect: device has been disposed.");
+        EnsureNotConnected("Cannot connect: connection is already open.");
+
+        _connectionHandle = hid_open_path(Properties.DevicePath);
+
+        if (_connectionHandle == IntPtr.Zero)
+        {
+            throw new HidException(
+                $"Failed to connect to the specified device: {hid_error()}"
+            );
+        }
+
+        _descriptor = new HidReportDescriptor(
+            this,
+            ReadRawReportDescriptor()
         );
 
-        public bool IsConnectionOpen => _connectionHandle != IntPtr.Zero;
+        hid_set_nonblocking(_connectionHandle, !_isReadBlocking);
+    }
 
-        public bool IsReadBlocking
+    public void Disconnect()
+    {
+        EnsureNotDisposed("Cannot disconnect: device has been disposed.");
+        EnsureConnected("Cannot disconnect: no connection is open.");
+
+        hid_close(_connectionHandle);
+        _connectionHandle = IntPtr.Zero;
+    }
+
+    public byte[] ReadRawReportDescriptor()
+    {
+        EnsureNotDisposed();
+        EnsureConnected();
+
+        var result = hid_get_report_descriptor(_connectionHandle, out var descriptor);
+        if (result < 0)
         {
-            get
-            {
-                EnsureNotDisposed();
-
-                return _isReadBlocking;
-            }
-
-            set
-            {
-                EnsureNotDisposed();
-
-                _isReadBlocking = value;
-
-                if (IsConnectionOpen)
-                {
-                    hid_set_nonblocking(_connectionHandle, !_isReadBlocking);
-                }
-            }
-        }
-
-        internal HidDevice(HidDeviceCollection collection, hid_device_info info)
-        {
-            Collection = collection;
-            Properties = new HidDeviceProperties(info);
-        }
-
-        public void Connect()
-        {
-            EnsureNotDisposed("Cannot connect: device has been disposed.");
-            EnsureNotConnected("Cannot connect: connection is already open.");
-
-            _connectionHandle = hid_open_path(Properties.DevicePath);
-
-            if (_connectionHandle == IntPtr.Zero)
-            {
-                throw new HidException(
-                    $"Failed to connect to the specified device: {hid_error()}"
-                );
-            }
-
-            _descriptor = new HidReportDescriptor(
-                this,
-                ReadRawReportDescriptor()
+            throw new HidException(
+                $"Unable to retrieve the device's raw report descriptor: {hid_error(_connectionHandle)}"
             );
-
-            hid_set_nonblocking(_connectionHandle, !_isReadBlocking);
         }
 
-        public void Disconnect()
+        Array.Resize(ref descriptor, result);
+        return descriptor;
+    }
+
+    public int WriteOutputReport(byte[] rawReport)
+    {
+        EnsureNotDisposed();
+        EnsureConnected();
+
+        unsafe
         {
-            EnsureNotDisposed("Cannot disconnect: device has been disposed.");
-            EnsureConnected("Cannot disconnect: no connection is open.");
-
-            hid_close(_connectionHandle);
-            _connectionHandle = IntPtr.Zero;
-        }
-
-        public byte[] ReadRawReportDescriptor()
-        {
-            EnsureNotDisposed();
-            EnsureConnected();
-
-            var result = hid_get_report_descriptor(_connectionHandle, out var descriptor);
-            if (result < 0)
+            fixed (byte* ptr = rawReport)
             {
-                throw new HidException(
-                    $"Unable to retrieve the device's raw report descriptor: {hid_error(_connectionHandle)}"
+                var result = hid_write(
+                    _connectionHandle,
+                    ptr,
+                    rawReport.Length
                 );
-            }
 
-            Array.Resize(ref descriptor, result);
-            return descriptor;
-        }
-
-        public int WriteOutputReport(byte[] rawReport)
-        {
-            EnsureNotDisposed();
-            EnsureConnected();
-
-            unsafe
-            {
-                fixed (byte* ptr = rawReport)
+                if (result < 0)
                 {
-                    var result = hid_write(
-                        _connectionHandle,
-                        ptr,
-                        rawReport.Length
+                    throw new HidException(
+                        $"Error while writing an output report to the device: {hid_error(_connectionHandle)}"
                     );
-
-                    if (result < 0)
-                    {
-                        throw new HidException(
-                            $"Error while writing an output report to the device: {hid_error(_connectionHandle)}"
-                        );
-                    }
-
-                    return result;
                 }
+
+                return result;
             }
         }
+    }
 
-        public int ReadInputReport(byte[] rawReport, bool blocking = false)
+    public int ReadInputReport(byte[] rawReport, bool blocking = false)
+    {
+        EnsureNotDisposed();
+        EnsureConnected();
+
+        unsafe
         {
-            EnsureNotDisposed();
-            EnsureConnected();
-
-            unsafe
+            fixed (byte* ptr = rawReport)
             {
-                fixed (byte* ptr = rawReport)
+                int result;
+
+                if (blocking)
                 {
-                    int result;
-
-                    if (blocking)
-                    {
-                        result = hid_read_timeout(
-                            _connectionHandle,
-                            ptr,
-                            rawReport.Length,
-                            -1 /* hid_read_timeout will issue a blocking wait if this is -1 */
-                        );
-                    }
-                    else
-                    {
-                        result = hid_read(
-                            _connectionHandle,
-                            ptr,
-                            rawReport.Length
-                        );
-                    }
-
-                    if (result < 0)
-                    {
-                        throw new HidException(
-                            $"Error while reading an input report from the device: {hid_error(_connectionHandle)}"
-                        );
-                    }
-
-                    return result;
-                }
-            }
-        }
-
-        public int ReadInputReport(byte[] rawReport, TimeSpan timeout)
-        {
-            EnsureNotDisposed();
-            EnsureConnected();
-
-            unsafe
-            {
-                fixed (byte* ptr = rawReport)
-                {
-                    var result = hid_read_timeout(
+                    result = hid_read_timeout(
                         _connectionHandle,
                         ptr,
                         rawReport.Length,
-                        (int)timeout.TotalMilliseconds
+                        -1 /* hid_read_timeout will issue a blocking wait if this is -1 */
                     );
-
-                    if (result < 0)
-                    {
-                        throw new HidException(
-                            $"Error while reading an input report from the device: {hid_error(_connectionHandle)}"
-                        );
-                    }
-
-                    return result;
                 }
-            }
-        }
-
-        public int SetFeatureReport(byte[] rawReport)
-        {
-            EnsureNotDisposed();
-            EnsureConnected();
-
-            unsafe
-            {
-                fixed (byte* ptr = rawReport)
+                else
                 {
-                    var result = hid_send_feature_report(
+                    result = hid_read(
                         _connectionHandle,
                         ptr,
                         rawReport.Length
                     );
-                    
-                    if (result < 0)
-                    {
-                        throw new HidException(
-                            $"Error while sending a feature report to the device: {hid_error(_connectionHandle)}"
-                        );
-                    }
-
-                    return result;
                 }
+
+                if (result < 0)
+                {
+                    throw new HidException(
+                        $"Error while reading an input report from the device: {hid_error(_connectionHandle)}"
+                    );
+                }
+
+                return result;
             }
         }
+    }
+
+    public int ReadInputReport(byte[] rawReport, TimeSpan timeout)
+    {
+        EnsureNotDisposed();
+        EnsureConnected();
+
+        unsafe
+        {
+            fixed (byte* ptr = rawReport)
+            {
+                var result = hid_read_timeout(
+                    _connectionHandle,
+                    ptr,
+                    rawReport.Length,
+                    (int)timeout.TotalMilliseconds
+                );
+
+                if (result < 0)
+                {
+                    throw new HidException(
+                        $"Error while reading an input report from the device: {hid_error(_connectionHandle)}"
+                    );
+                }
+
+                return result;
+            }
+        }
+    }
+
+    public int SetFeatureReport(byte[] rawReport)
+    {
+        EnsureNotDisposed();
+        EnsureConnected();
+
+        unsafe
+        {
+            fixed (byte* ptr = rawReport)
+            {
+                var result = hid_send_feature_report(
+                    _connectionHandle,
+                    ptr,
+                    rawReport.Length
+                );
+                    
+                if (result < 0)
+                {
+                    throw new HidException(
+                        $"Error while sending a feature report to the device: {hid_error(_connectionHandle)}"
+                    );
+                }
+
+                return result;
+            }
+        }
+    }
         
-        public int GetFeatureReport(byte[] rawReport)
-        {
-            EnsureNotDisposed();
-            EnsureConnected();
+    public int GetFeatureReport(byte[] rawReport)
+    {
+        EnsureNotDisposed();
+        EnsureConnected();
 
-            unsafe
+        unsafe
+        {
+            fixed (byte* ptr = rawReport)
             {
-                fixed (byte* ptr = rawReport)
-                {
-                    var result = hid_get_feature_report(
-                        _connectionHandle,
-                        ptr,
-                        rawReport.Length
-                    );
+                var result = hid_get_feature_report(
+                    _connectionHandle,
+                    ptr,
+                    rawReport.Length
+                );
                     
-                    if (result < 0)
-                    {
-                        throw new HidException(
-                            $"Error while retrieving a feature report from the device: {hid_error(_connectionHandle)}"
-                        );
-                    }
-
-                    return result;
+                if (result < 0)
+                {
+                    throw new HidException(
+                        $"Error while retrieving a feature report from the device: {hid_error(_connectionHandle)}"
+                    );
                 }
+
+                return result;
             }
         }
+    }
 
-        internal void Dispose()
+    internal void Dispose()
+    {
+        EnsureNotDisposed(
+            "Attempt to dispose a HID device more than once. " +
+            "This is an internal error - please report."
+        );
+
+        Collection = null!;
+        Properties = null!;
+        _descriptor = null!;
+
+        if (_connectionHandle != IntPtr.Zero)
         {
-            EnsureNotDisposed(
-                "Attempt to dispose a HID device more than once. " +
-                "This is an internal error - please report."
+            Disconnect();
+        }
+
+        _isDisposed = true;
+    }
+
+    private void EnsureNotDisposed(string? customMsg = null)
+    {
+        if (_isDisposed)
+        {
+            throw new InvalidOperationException(
+                customMsg
+                ?? "This HID device has already been disposed."
             );
-
-            Collection = null!;
-            Properties = null!;
-            _descriptor = null!;
-
-            if (_connectionHandle != IntPtr.Zero)
-            {
-                Disconnect();
-            }
-
-            _isDisposed = true;
         }
+    }
 
-        private void EnsureNotDisposed(string? customMsg = null)
+    private void EnsureConnected(string? customMsg = null)
+    {
+        if (_connectionHandle == IntPtr.Zero)
         {
-            if (_isDisposed)
-            {
-                throw new InvalidOperationException(
-                    customMsg
-                    ?? "This HID device has already been disposed."
-                );
-            }
+            throw new InvalidOperationException(
+                customMsg
+                ?? "This operation requires a connection to the device to be open."
+            );
         }
+    }
 
-        private void EnsureConnected(string? customMsg = null)
+    private void EnsureNotConnected(string? customMsg = null)
+    {
+        if (_connectionHandle != IntPtr.Zero)
         {
-            if (_connectionHandle == IntPtr.Zero)
-            {
-                throw new InvalidOperationException(
-                    customMsg
-                    ?? "This operation requires a connection to the device to be open."
-                );
-            }
-        }
-
-        private void EnsureNotConnected(string? customMsg = null)
-        {
-            if (_connectionHandle != IntPtr.Zero)
-            {
-                throw new InvalidOperationException(
-                    customMsg
-                    ?? "This operation requires the device to be disconnected first."
-                );
-            }
+            throw new InvalidOperationException(
+                customMsg
+                ?? "This operation requires the device to be disconnected first."
+            );
         }
     }
 }

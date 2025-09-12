@@ -1,66 +1,65 @@
+namespace Hideous;
+
 using System.Text;
 
-namespace Hideous
+public sealed class HidFeatureReport : HidReport
 {
-    public sealed class HidFeatureReport : HidReport
+    private readonly HidDevice _device;
+        
+    internal HidFeatureReport(HidDevice device, int bitsPerField, int fieldCount, ushort usagePage, ushort usageId) 
+        : base(bitsPerField, fieldCount, usagePage, usageId)
     {
-        private readonly HidDevice _device;
+        _device = device;
+    }
         
-        internal HidFeatureReport(HidDevice device, int bitsPerField, int fieldCount, ushort usagePage, ushort usageId) 
-            : base(bitsPerField, fieldCount, usagePage, usageId)
+    internal HidFeatureReport(HidDevice device, byte id, int bitsPerField, int fieldCount, ushort usagePage, ushort usageId) 
+        : base(id, bitsPerField, fieldCount, usagePage, usageId)
+    {
+        _device = device;
+    }
+
+    public int Set(byte[] data)
+    {
+        Array.Resize(ref data, DataLength + 1);
+
+        for (var i = data.Length - 1; i >= 1; i--)
         {
-            _device = device;
+            data[i] = data[i - 1];
         }
+
+        data[0] = Id;
+        return _device.SetFeatureReport(data) - 1;
+    }
         
-        internal HidFeatureReport(HidDevice device, byte id, int bitsPerField, int fieldCount, ushort usagePage, ushort usageId) 
-            : base(id, bitsPerField, fieldCount, usagePage, usageId)
+    public byte[] Get(byte[] data)
+    {
+        Array.Resize(ref data, DataLength + 1);
+
+        for (var i = data.Length - 1; i >= 1; i++)
         {
-            _device = device;
+            data[i] = data[i - 1];
         }
 
-        public int Set(byte[] data)
+        data[0] = Id;
+
+        var count = _device.GetFeatureReport(data);
+
+        var ret = new byte[count - 1];
+        if (count > 0)
         {
-            Array.Resize(ref data, DataLength + 1);
-
-            for (var i = data.Length - 1; i >= 1; i--)
-            {
-                data[i] = data[i - 1];
-            }
-
-            data[0] = Id;
-            return _device.SetFeatureReport(data) - 1;
-        }
-        
-        public byte[] Get(byte[] data)
-        {
-            Array.Resize(ref data, DataLength + 1);
-
-            for (var i = data.Length - 1; i >= 1; i++)
-            {
-                data[i] = data[i - 1];
-            }
-
-            data[0] = Id;
-
-            var count = _device.GetFeatureReport(data);
-
-            var ret = new byte[count - 1];
-            if (count > 0)
-            {
-                Array.Copy(data, 1, ret, 0, count - 1);
-            }
-
-            return ret; 
+            Array.Copy(data, 1, ret, 0, count - 1);
         }
 
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
+        return ret; 
+    }
 
-            sb.Append("HID Feature Report ");
-            sb.Append(base.ToString());
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+
+        sb.Append("HID Feature Report ");
+        sb.Append(base.ToString());
             
-            return sb.ToString();
-        }
+        return sb.ToString();
     }
 }
